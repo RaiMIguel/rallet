@@ -1,0 +1,14 @@
+import 'package:rallet/features/account/infra/models/account_model.dart';
+import 'package:rallet/features/account/infra/models/account_simple.dart';
+import 'package:rallet/shared/infra/data_sources/database_local/i_database_local_transaction.dart';
+import 'package:rallet/shared/infra/data_sources/i_local_data_source.dart';
+
+abstract interface class IAccountLocalDataSource implements ILocalDataSource<AccountModel> {
+  Future<double> findBalanceUntilDate(DateTime date);
+
+  Future<double> findAccountsBalanceUntilDate(DateTime date);
+
+  Future<List<AccountSimpleModel>> getAllSimplesByIds(List<String> ids, {ITransactionExecutor? txn});
+
+  Future<AccountSimpleModel?> getSimpleById(String id, {ITransactionExecutor? txn});
+}

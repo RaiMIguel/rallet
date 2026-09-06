@@ -1,0 +1,35 @@
+import 'package:rallet/features/credit_card/domain/entities/credit_card_bill_entity.dart';
+import 'package:rallet/features/credit_card/domain/entities/credit_card_entity.dart';
+import 'package:rallet/features/credit_card/domain/entities/credit_card_with_bill_entity.dart';
+import 'package:rallet/shared/infra/data_sources/database_local/i_database_local_transaction.dart';
+
+abstract interface class ICreditCardRepository {
+  Future<CreditCardEntity> save(
+    CreditCardEntity entity, {
+    ITransactionExecutor? txn,
+  });
+
+  Future<void> delete(CreditCardEntity entity);
+
+  Future<List<CreditCardEntity>> findAll();
+
+  Future<CreditCardEntity?> findById(
+    String id, {
+    bool deleted = false,
+    ITransactionExecutor? txn,
+  });
+
+  Future<List<CreditCardWithBillEntity>> findCreditCardsWithBill();
+
+  Future<List<CreditCardBillEntity>> findBillsByPeriod(
+    DateTime startDate,
+    DateTime endDate,
+  );
+
+  Future<List<CreditCardBillEntity>> findAllBillsByPeriod(
+    DateTime startDate,
+    DateTime endDate,
+  );
+
+  Future<CreditCardEntity?> findByIdAccount(String id);
+}

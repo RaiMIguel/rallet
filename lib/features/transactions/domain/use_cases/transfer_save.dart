@@ -1,0 +1,86 @@
+import 'package:rallet/features/ad/domain/use_cases/i_ad_access.dart';
+import 'package:rallet/features/statement/domain/entities/statement_entity.dart';
+import 'package:rallet/features/statement/domain/repositories/i_statement_repository.dart';
+import 'package:rallet/features/transactions/domain/entities/transfer_entity.dart';
+import 'package:rallet/features/transactions/domain/repositories/i_transfer_repository.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_transfer_save.dart';
+import 'package:rallet/shared/domain/repositories/i_local_db_transaction_repository.dart';
+import 'package:rallet/shared/exceptions/exceptions.dart';
+import 'package:rallet/shared/presentation/ui/app_locale.dart';
+
+class TransferSave implements ITransferSave {
+  final ITransferRepository _repository;
+  final IStatementRepository _statementRepository;
+  final ILocalDBTransactionRepository _localDBTransactionRepository;
+  final IAdAccess _adAccess;
+
+  TransferSave({
+    required ITransferRepository repository,
+    required IStatementRepository statementRepository,
+    required ILocalDBTransactionRepository localDBTransactionRepository,
+    required IAdAccess adAccess,
+  })  : _repository = repository,
+        _statementRepository = statementRepository,
+        _localDBTransactionRepository = localDBTransactionRepository,
+        _adAccess = adAccess;
+
+  @override
+  Future<TransferEntity> save(TransferEntity entity) async {
+    if (entity.idAccountFrom == null) throw ValidationException(R.strings.uninformedAccount);
+    if (entity.idAccountTo == null) throw ValidationException(R.strings.uninformedAccount);
+    if (entity.amount <= 0) throw ValidationException(R.strings.greaterThanZero);
+    if (entity.idAccountFrom == entity.idAccountTo) throw ValidationException(R.strings.sourceAccountAndDestinationEquals);
+
+    final List<StatementEntity> statements = [];
+
+    if (entity.isNew) {
+      statements.addAll([
+        StatementEntity(
+          id: null,
+          createdAt: null,
+          deletedAt: null,
+          amount: -entity.amount.abs(),
+          date: DateTime.now(),
+          idAccount: entity.idAccountFrom!,
+          idExpense: null,
+          idIncome: null,
+          idTransfer: entity.id,
+        ),
+        StatementEntity(
+          id: null,
+          createdAt: null,
+          deletedAt: null,
+          amount: entity.amount,
+          date: DateTime.now(),
+          idAccount: entity.idAccountTo!,
+          idExpense: null,
+          idIncome: null,
+          idTransfer: entity.id,
+        ),
+      ]);
+    } else {
+      final List<StatementEntity> result = await _statementRepository.findByIdTransfer(entity.id);
+
+      statements.addAll(result.map((e) => e..updateFromTransfer(entity)));
+    }
+
+    final TransferEntity result =  await _localDBTransactionRepository.openTransaction<TransferEntity>((txn) async {
+      late final TransferEntity entitySaved;
+
+      await Future.wait([
+        _repository.save(entity, txn: txn).then((value) => entitySaved = value),
+        Future(() async {
+          for (var statement in statements) {
+            await _statementRepository.save(statement, txn: txn);
+          }
+        }),
+      ]);
+
+      return entitySaved;
+    });
+
+    _adAccess.consumeUse();
+
+    return result;
+  }
+}

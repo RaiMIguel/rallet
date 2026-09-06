@@ -1,0 +1,169 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:rallet/di/dependency_injection.dart';
+import 'package:rallet/features/auth/presentation/view_models/email_verification_view_model.dart';
+import 'package:rallet/features/first_steps/presentation/ui/first_steps_page.dart';
+import 'package:rallet/shared/presentation/mixins/theme_context.dart';
+import 'package:rallet/shared/presentation/ui/components/dialog/error_dialog.dart';
+import 'package:rallet/shared/presentation/ui/components/spacing.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+class EmailVerificationPage extends StatefulWidget {
+  static const String route = 'email_verification';
+
+  const EmailVerificationPage({super.key});
+
+  @override
+  State<EmailVerificationPage> createState() => _EmailVerificationPageState();
+}
+
+class _EmailVerificationPageState extends State<EmailVerificationPage> with ThemeContext {
+  final EmailVerificationViewModel viewModel = DI.get<EmailVerificationViewModel>();
+
+  static const int maxSeconds = 60;
+
+  Timer? timerResendEmail;
+  int? timerResendEmailTick;
+
+  @override
+  void initState() {
+    super.initState();
+    startTimerResendEmail();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([viewModel.resendEmail, viewModel.completeRegistration]),
+      builder: (_, __) {
+        return Scaffold(
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Builder(
+                              builder: (_) {
+                                final sizeOf = MediaQuery.sizeOf(context);
+                                final double size = min((min(sizeOf.height, sizeOf.width) / 1.7), 370);
+                                return Image.asset('assets/images/email_verification.png', width: size, height: size);
+                              },
+                            ),
+                            const Spacing.y(4),
+                            Text(
+                              strings.confirmEmail,
+                              style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w500),
+                              textAlign: TextAlign.center,
+                            ),
+                            const Spacing.y(),
+                            Text(
+                              strings.confirmEmailExplication,
+                              style: textTheme.bodyMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const Spacing.y(),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(minWidth: 180),
+                              child: Builder(
+                                builder: (_) {
+                                  if (viewModel.resendEmail.running) {
+                                    return FilledButton.tonal(
+                                      onPressed: null,
+                                      child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: colorScheme.onSecondaryContainer, strokeWidth: 2.5)),
+                                    );
+                                  }
+
+                                  return FilledButton.tonalIcon(
+                                    onPressed: (timerResendEmailTick ?? 0) <= 0 ? resendEmail : null,
+                                    icon: Icon((timerResendEmailTick ?? 0) <= 0 ? Icons.forward_to_inbox : Icons.hourglass_top_outlined),
+                                    label: Text((timerResendEmailTick ?? 0) <= 0 ? strings.resendEmail : strings.seconds(timerResendEmailTick ?? 0)),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Spacing.y(2),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: FilledButton(
+                      onPressed: completeRegistration,
+                      child: viewModel.completeRegistration.running ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: colorScheme.onPrimary, strokeWidth: 2.5)) : Text(strings.completeRegistration),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    );
+  }
+
+  Future<void> resendEmail() async {
+    try {
+      if (viewModel.isLoading) return;
+
+      await viewModel.resendEmail.execute();
+      viewModel.resendEmail.throwIfError();
+
+      startTimerResendEmail();
+    } catch (e) {
+      if (!mounted) return;
+      await ErrorDialog.show(context, e.toString());
+    }
+  }
+
+  Future<void> completeRegistration() async {
+    try {
+      if (viewModel.isLoading) return;
+
+      await viewModel.completeRegistration.execute();
+      viewModel.completeRegistration.throwIfError();
+
+      if (!mounted) return;
+
+      context.goNamed(FirstStepsPage.route, extra: true);
+    } catch (e) {
+      if (!mounted) return;
+      await ErrorDialog.show(context, e.toString());
+    }
+  }
+
+  void startTimerResendEmail() {
+    if (timerResendEmail?.isActive != true) {
+      setState(() => timerResendEmailTick = maxSeconds);
+
+      timerResendEmail = Timer.periodic(const Duration(seconds: 1), (timer) {
+        setState(() {
+          timerResendEmailTick = maxSeconds - timer.tick;
+
+          if (timer.tick >= maxSeconds) {
+            timerResendEmailTick = null;
+            timerResendEmail?.cancel();
+          }
+        });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    timerResendEmail?.cancel();
+    super.dispose();
+  }
+}

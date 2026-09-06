@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      No Android, mantemos apenas o mesmo fundo da splash Flutter.
+      A marca é desenhada uma única vez pelo Flutter para evitar o efeito
+      visual de duas raposas/telas durante a transição do splash nativo.
+    -->
+    <item android:drawable="@color/rallet_splash_background" />
+</layer-list>

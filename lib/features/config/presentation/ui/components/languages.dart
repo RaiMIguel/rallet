@@ -1,0 +1,76 @@
+import 'package:collection/collection.dart';
+import 'package:diacritic/diacritic.dart';
+import 'package:rallet/di/dependency_injection.dart';
+import 'package:rallet/features/config/presentation/notifiers/locale_notifier.dart';
+import 'package:rallet/shared/extensions/locale_extension.dart';
+import 'package:rallet/shared/presentation/mixins/theme_context.dart';
+import 'package:rallet/shared/presentation/ui/components/draggable_bottom_sheet.dart';
+import 'package:rallet/shared/presentation/ui/components/spacing.dart';
+import 'package:flutter/material.dart';
+import 'package:rallet/l10n/generated/app_localizations.dart';
+import 'package:go_router/go_router.dart';
+
+class Languages extends StatefulWidget {
+  const Languages({Key? key}) : super(key: key);
+
+  static Future<void> show(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      enableDrag: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (_) => const Languages(),
+    );
+  }
+
+  @override
+  State<Languages> createState() => _LanguagesState();
+}
+
+class _LanguagesState extends State<Languages> with ThemeContext {
+  final LocaleNotifier notifier = DI.get<LocaleNotifier>();
+
+  final List<Locale> locales = AppLocalizations.supportedLocales.toList()..sort((a, b) => removeDiacritics(a.getDisplayLanguage()).compareTo(removeDiacritics(b.getDisplayLanguage())));
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableBottomSheet(
+      builder: (scrollController) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(strings.languages, style: textTheme.titleMedium),
+            ),
+            const Spacing.y(1.5),
+            Expanded(
+              child: RadioGroup<Locale>(
+                groupValue: locales.firstWhereOrNull((e) => e.languageCode == AppLocalizations.of(context)?.localeName),
+                onChanged: (value) {
+                  if (value != null) notifier.changeAndSave(value);
+                  context.pop(value);
+                },
+                child: ListView.separated(
+                  controller: scrollController,
+                  itemCount: locales.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (_, index) {
+                    final Locale locale = locales[index];
+                    return RadioListTile<Locale>(
+                      title: Text(locale.getDisplayLanguage()),
+                      controlAffinity: ListTileControlAffinity.trailing,
+                      toggleable: true,
+                      value: locale,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

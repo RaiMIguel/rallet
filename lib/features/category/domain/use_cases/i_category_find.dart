@@ -1,0 +1,8 @@
+import 'package:rallet/features/category/domain/entities/category_entity.dart';
+import 'package:rallet/features/category/domain/enums/category_type_enum.dart';
+
+abstract interface class ICategoryFind {
+  Future<List<CategoryEntity>> findAll({CategoryTypeEnum? type, bool deleted = false});
+
+  Future<CategoryEntity?> findById(String id, {bool deleted = false});
+}

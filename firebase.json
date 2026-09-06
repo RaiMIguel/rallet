@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"rallet-rotec","appId":"1:321814673088:android:add02bea1b8a2b85625f25","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"rallet-rotec","configurations":{"android":"1:321814673088:android:add02bea1b8a2b85625f25"}}}}},"firestore":{"rules":"firestore.rules"}}

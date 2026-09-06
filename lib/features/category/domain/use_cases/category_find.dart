@@ -1,0 +1,16 @@
+import 'package:rallet/features/category/domain/entities/category_entity.dart';
+import 'package:rallet/features/category/domain/enums/category_type_enum.dart';
+import 'package:rallet/features/category/domain/repositories/i_category_repository.dart';
+import 'package:rallet/features/category/domain/use_cases/i_category_find.dart';
+
+class CategoryFind implements ICategoryFind {
+  final ICategoryRepository _repository;
+
+  CategoryFind({required ICategoryRepository repository}) : _repository = repository;
+
+  @override
+  Future<List<CategoryEntity>> findAll({CategoryTypeEnum? type, bool deleted = false}) => _repository.findAll(type: type, deleted: deleted);
+
+  @override
+  Future<CategoryEntity?> findById(String id, {bool deleted = false}) => _repository.findById(id, deleted: deleted);
+}

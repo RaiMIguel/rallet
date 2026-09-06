@@ -1,0 +1,12 @@
+import 'package:rallet/features/transactions/domain/entities/transfer_entity.dart';
+import 'package:rallet/features/transactions/domain/repositories/i_transfer_repository.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_transfer_find.dart';
+
+class TransferFind implements ITransferFind {
+  final ITransferRepository _repository;
+
+  TransferFind({required ITransferRepository repository}) : _repository = repository;
+
+  @override
+  Future<TransferEntity?> findById(String id) => _repository.findById(id);
+}

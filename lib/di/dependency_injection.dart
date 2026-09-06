@@ -1,0 +1,459 @@
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rallet/features/account/domain/repositories/i_account_repository.dart';
+import 'package:rallet/features/account/domain/use_cases/account_delete.dart';
+import 'package:rallet/features/account/domain/use_cases/account_find.dart';
+import 'package:rallet/features/account/domain/use_cases/account_readjustment_transaction.dart';
+import 'package:rallet/features/account/domain/use_cases/account_save.dart';
+import 'package:rallet/features/account/domain/use_cases/i_account_delete.dart';
+import 'package:rallet/features/account/domain/use_cases/i_account_find.dart';
+import 'package:rallet/features/account/domain/use_cases/i_account_readjustment_transaction.dart';
+import 'package:rallet/features/account/domain/use_cases/i_account_save.dart';
+import 'package:rallet/features/account/infra/data_sources/account_local_data_source.dart';
+import 'package:rallet/features/account/infra/data_sources/i_account_local_data_source.dart';
+import 'package:rallet/features/account/infra/repositories/account_repository.dart';
+import 'package:rallet/features/account/presentation/view_models/account_details_view_model.dart';
+import 'package:rallet/features/account/presentation/view_models/account_form_view_model.dart';
+import 'package:rallet/features/account/presentation/view_models/accounts_list_view_model.dart';
+import 'package:rallet/features/account/presentation/view_models/readjust_balance_view_model.dart';
+import 'package:rallet/features/ad/domain/repositories/i_ad_access_repository.dart';
+import 'package:rallet/features/ad/domain/repositories/i_ad_repository.dart';
+import 'package:rallet/features/ad/domain/use_cases/ad.dart';
+import 'package:rallet/features/ad/domain/use_cases/ad_access.dart';
+import 'package:rallet/features/ad/domain/use_cases/i_ad.dart';
+import 'package:rallet/features/ad/domain/use_cases/i_ad_access.dart';
+import 'package:rallet/features/ad/infra/repositories/ad_access_repository.dart';
+import 'package:rallet/features/ad/infra/repositories/ad_repository.dart';
+import 'package:rallet/features/auth/domain/repositories/i_auth_repository.dart';
+import 'package:rallet/features/auth/domain/use_cases/auth_find.dart';
+import 'package:rallet/features/auth/domain/use_cases/i_auth_find.dart';
+import 'package:rallet/features/auth/domain/use_cases/i_login_auth.dart';
+import 'package:rallet/features/auth/domain/use_cases/i_reset_password.dart';
+import 'package:rallet/features/auth/domain/use_cases/i_signup_auth.dart';
+import 'package:rallet/features/auth/domain/use_cases/login_auth.dart';
+import 'package:rallet/features/auth/domain/use_cases/reset_password.dart';
+import 'package:rallet/features/auth/domain/use_cases/signup_auth.dart';
+import 'package:rallet/features/auth/infra/data_sources/auth_local_data_source.dart';
+import 'package:rallet/features/auth/infra/data_sources/i_auth_local_data_source.dart';
+import 'package:rallet/features/auth/infra/repositories/auth_repository.dart';
+import 'package:rallet/features/auth/infra/repositories/desktop_auth_repository.dart';
+import 'package:rallet/features/auth/presentation/view_models/email_verification_view_model.dart';
+import 'package:rallet/features/auth/presentation/view_models/login_view_model.dart';
+import 'package:rallet/features/auth/presentation/view_models/reset_password_view_model.dart';
+import 'package:rallet/features/auth/presentation/view_models/signup_view_model.dart';
+import 'package:rallet/features/backup/domain/repositories/i_backup_repository.dart';
+import 'package:rallet/features/backup/domain/use_cases/backup.dart';
+import 'package:rallet/features/backup/domain/use_cases/i_backup.dart';
+import 'package:rallet/features/backup/domain/use_cases/i_restore_backup.dart';
+import 'package:rallet/features/backup/domain/use_cases/restore_backup.dart';
+import 'package:rallet/features/backup/infra/repositories/backup_repository.dart';
+import 'package:rallet/features/backup/presentation/view_models/backup_view_model.dart';
+import 'package:rallet/features/backup/presentation/view_models/restore_backup_view_model.dart';
+import 'package:rallet/features/card_cash_advance/domain/repositories/i_card_cash_advance_repository.dart';
+import 'package:rallet/features/card_cash_advance/domain/use_cases/card_cash_advance.dart';
+import 'package:rallet/features/card_cash_advance/domain/use_cases/i_card_cash_advance.dart';
+import 'package:rallet/features/card_cash_advance/infra/data_sources/card_cash_advance_local_data_source.dart';
+import 'package:rallet/features/card_cash_advance/infra/data_sources/i_card_cash_advance_local_data_source.dart';
+import 'package:rallet/features/card_cash_advance/infra/repositories/card_cash_advance_repository.dart';
+import 'package:rallet/features/card_cash_advance/presentation/view_models/card_cash_advance_form_view_model.dart';
+import 'package:rallet/features/card_cash_advance/presentation/view_models/card_cash_advance_details_view_model.dart';
+import 'package:rallet/features/category/domain/repositories/i_category_repository.dart';
+import 'package:rallet/features/category/domain/use_cases/category_delete.dart';
+import 'package:rallet/features/category/domain/use_cases/category_find.dart';
+import 'package:rallet/features/category/domain/use_cases/category_save.dart';
+import 'package:rallet/features/category/domain/use_cases/i_category_delete.dart';
+import 'package:rallet/features/category/domain/use_cases/i_category_find.dart';
+import 'package:rallet/features/category/domain/use_cases/i_category_save.dart';
+import 'package:rallet/features/category/infra/data_sources/category_local_data_source.dart';
+import 'package:rallet/features/category/infra/data_sources/i_category_local_data_source.dart';
+import 'package:rallet/features/category/infra/repositories/category_repository.dart';
+import 'package:rallet/features/category/presentation/view_models/categories_list_view_model.dart';
+import 'package:rallet/features/category/presentation/view_models/category_form_view_model.dart';
+import 'package:rallet/features/config/domain/repositories/i_config_repository.dart';
+import 'package:rallet/features/config/domain/use_cases/config_find.dart';
+import 'package:rallet/features/config/domain/use_cases/config_save.dart';
+import 'package:rallet/features/config/domain/use_cases/i_config_find.dart';
+import 'package:rallet/features/config/domain/use_cases/i_config_save.dart';
+import 'package:rallet/features/config/infra/repositories/config_repository.dart';
+import 'package:rallet/features/config/presentation/notifiers/locale_notifier.dart';
+import 'package:rallet/features/config/presentation/notifiers/theme_mode_notifier.dart';
+import 'package:rallet/features/credit_card/domain/repositories/i_credit_card_bill_repository.dart';
+import 'package:rallet/features/credit_card/domain/repositories/i_credit_card_repository.dart';
+import 'package:rallet/features/credit_card/domain/repositories/i_credit_card_transaction_repository.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_bill_dates.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_bill_find.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_bill_save.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_delete.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_find.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_save.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_transaction_delete.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_transaction_find.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/credit_card_transaction_save.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_bill_dates.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_bill_find.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_bill_save.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_delete.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_find.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_save.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_transaction_delete.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_transaction_find.dart';
+import 'package:rallet/features/credit_card/domain/use_cases/i_credit_card_transaction_save.dart';
+import 'package:rallet/features/credit_card/infra/data_sources/credit_card_bill_local_data_source.dart';
+import 'package:rallet/features/credit_card/infra/data_sources/credit_card_local_data_source.dart';
+import 'package:rallet/features/credit_card/infra/data_sources/credit_card_transaction_local_data_source.dart';
+import 'package:rallet/features/credit_card/infra/data_sources/i_credit_card_bill_local_data_source.dart';
+import 'package:rallet/features/credit_card/infra/data_sources/i_credit_card_local_data_source.dart';
+import 'package:rallet/features/credit_card/infra/data_sources/i_credit_card_transaction_local_data_source.dart';
+import 'package:rallet/features/credit_card/infra/repositories/credit_card_bill_repository.dart';
+import 'package:rallet/features/credit_card/infra/repositories/credit_card_repository.dart';
+import 'package:rallet/features/credit_card/infra/repositories/credit_card_transaction_repository.dart';
+import 'package:rallet/features/credit_card/presentation/view_models/credit_card_bill_details_view_model.dart';
+import 'package:rallet/features/credit_card/presentation/view_models/credit_card_bills_view_model.dart';
+import 'package:rallet/features/credit_card/presentation/view_models/credit_card_expense_details_view_model.dart';
+import 'package:rallet/features/credit_card/presentation/view_models/credit_card_expense_form_view_model.dart';
+import 'package:rallet/features/credit_card/presentation/view_models/credit_card_form_view_model.dart';
+import 'package:rallet/features/credit_card/presentation/view_models/credit_cards_details_view_model.dart';
+import 'package:rallet/features/credit_card/presentation/view_models/pay_bill_view_model.dart';
+import 'package:rallet/features/first_steps/domain/repositories/i_first_steps_repository.dart';
+import 'package:rallet/features/first_steps/domain/use_Cases/first_steps_find.dart';
+import 'package:rallet/features/first_steps/domain/use_Cases/first_steps_save.dart';
+import 'package:rallet/features/first_steps/domain/use_Cases/i_first_steps_find.dart';
+import 'package:rallet/features/first_steps/domain/use_Cases/i_first_steps_save.dart';
+import 'package:rallet/features/first_steps/infra/data_sources/first_steps_local_data_source.dart';
+import 'package:rallet/features/first_steps/infra/data_sources/i_first_steps_local_data_source.dart';
+import 'package:rallet/features/first_steps/infra/repositories/first_steps_repository.dart';
+import 'package:rallet/features/first_steps/presentation/notifiers/first_steps_notifier.dart';
+import 'package:rallet/features/home/domain/repositories/i_home_monthly_balance_repository.dart';
+import 'package:rallet/features/home/domain/use_cases/home_monthly_balance.dart';
+import 'package:rallet/features/home/domain/use_cases/i_home_monthly_balance.dart';
+import 'package:rallet/features/home/infra/repositories/home_monthly_balance_repository.dart';
+import 'package:rallet/features/home/presentation/view_models/home_view_model.dart';
+import 'package:rallet/features/purchase_planning/domain/repositories/i_purchase_planning_repository.dart';
+import 'package:rallet/features/purchase_planning/domain/use_cases/i_purchase_planning.dart';
+import 'package:rallet/features/purchase_planning/domain/use_cases/purchase_planning.dart';
+import 'package:rallet/features/purchase_planning/infra/data_sources/i_purchase_planning_local_data_source.dart';
+import 'package:rallet/features/purchase_planning/infra/data_sources/purchase_planning_local_data_source.dart';
+import 'package:rallet/features/purchase_planning/infra/repositories/purchase_planning_repository.dart';
+import 'package:rallet/features/purchase_planning/presentation/view_models/purchase_planning_view_model.dart';
+import 'package:rallet/features/privacy/domain/services/account_deletion_service.dart';
+import 'package:rallet/features/reports/domain/repositories/i_report_categories_repository.dart';
+import 'package:rallet/features/reports/domain/use_cases/i_report_categories_find.dart';
+import 'package:rallet/features/reports/domain/use_cases/report_categories_find.dart';
+import 'package:rallet/features/reports/infra/repositories/report_categories_repository.dart';
+import 'package:rallet/features/reports/presentation/view_models/report_categories_view_model.dart';
+import 'package:rallet/features/reports/presentation/view_models/reports_dashboard_view_model.dart';
+import 'package:rallet/features/splash/presentation/view_models/splash_view_model.dart';
+import 'package:rallet/features/statement/domain/repositories/i_statement_repository.dart';
+import 'package:rallet/features/statement/infra/data_sources/i_statement_local_data_source.dart';
+import 'package:rallet/features/statement/infra/data_sources/statement_local_data_source.dart';
+import 'package:rallet/features/statement/infra/repositories/statement_repository.dart';
+import 'package:rallet/features/transactions/domain/repositories/i_expense_repository.dart';
+import 'package:rallet/features/transactions/domain/repositories/i_income_repository.dart';
+import 'package:rallet/features/transactions/domain/repositories/i_transaction_repository.dart';
+import 'package:rallet/features/transactions/domain/repositories/i_transfer_repository.dart';
+import 'package:rallet/features/transactions/domain/use_cases/expense_delete.dart';
+import 'package:rallet/features/transactions/domain/use_cases/expense_find.dart';
+import 'package:rallet/features/transactions/domain/use_cases/expense_save.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_expense_delete.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_expense_find.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_expense_save.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_income_delete.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_income_find.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_income_save.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_transaction_delete.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_transaction_find.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_transfer_delete.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_transfer_find.dart';
+import 'package:rallet/features/transactions/domain/use_cases/i_transfer_save.dart';
+import 'package:rallet/features/transactions/domain/use_cases/income_delete.dart';
+import 'package:rallet/features/transactions/domain/use_cases/income_find.dart';
+import 'package:rallet/features/transactions/domain/use_cases/income_save.dart';
+import 'package:rallet/features/transactions/domain/use_cases/transaction_delete.dart';
+import 'package:rallet/features/transactions/domain/use_cases/transaction_find.dart';
+import 'package:rallet/features/transactions/domain/use_cases/transfer_delete.dart';
+import 'package:rallet/features/transactions/domain/use_cases/transfer_find.dart';
+import 'package:rallet/features/transactions/domain/use_cases/transfer_save.dart';
+import 'package:rallet/features/transactions/infra/data_sources/expense_local_data_source.dart';
+import 'package:rallet/features/transactions/infra/data_sources/i_expense_local_data_source.dart';
+import 'package:rallet/features/transactions/infra/data_sources/i_income_local_data_source.dart';
+import 'package:rallet/features/transactions/infra/data_sources/i_transaction_data_source.dart';
+import 'package:rallet/features/transactions/infra/data_sources/i_transfer_local_data_source.dart';
+import 'package:rallet/features/transactions/infra/data_sources/income_local_data_source.dart';
+import 'package:rallet/features/transactions/infra/data_sources/transaction_data_source.dart';
+import 'package:rallet/features/transactions/infra/data_sources/transfer_local_data_source.dart';
+import 'package:rallet/features/transactions/infra/repositories/expense_repository.dart';
+import 'package:rallet/features/transactions/infra/repositories/income_repository.dart';
+import 'package:rallet/features/transactions/infra/repositories/transaction_repository.dart';
+import 'package:rallet/features/transactions/infra/repositories/transfer_repository.dart';
+import 'package:rallet/features/transactions/presentation/view_models/expense_details_view_model.dart';
+import 'package:rallet/features/transactions/presentation/view_models/expense_form_view_model.dart';
+import 'package:rallet/features/transactions/presentation/view_models/income_details_view_model.dart';
+import 'package:rallet/features/transactions/presentation/view_models/income_form_view_model.dart';
+import 'package:rallet/features/transactions/presentation/view_models/search_transactions_view_model.dart';
+import 'package:rallet/features/transactions/presentation/view_models/transactions_list_view_model.dart';
+import 'package:rallet/features/transactions/presentation/view_models/transactions_unpaid_unreceived_view_model.dart';
+import 'package:rallet/features/transactions/presentation/view_models/transfer_details_view_model.dart';
+import 'package:rallet/features/transactions/presentation/view_models/transfer_form_view_model.dart';
+import 'package:rallet/features/user_account/infra/data_sources/i_user_account_cloud_data_source.dart';
+import 'package:rallet/features/user_account/infra/data_sources/i_user_account_local_data_source.dart';
+import 'package:rallet/features/user_account/infra/data_sources/user_account_cloud_data_source.dart';
+import 'package:rallet/features/user_account/infra/data_sources/user_account_local_data_source.dart';
+import 'package:rallet/shared/domain/domain/delete_app_data.dart';
+import 'package:rallet/shared/domain/domain/i_delete_app_data.dart';
+import 'package:rallet/shared/domain/repositories/i_delete_app_data_repository.dart';
+import 'package:rallet/shared/domain/repositories/i_local_db_transaction_repository.dart';
+import 'package:rallet/shared/infra/data_sources/cache_local/cache_local.dart';
+import 'package:rallet/shared/infra/data_sources/cache_local/i_cache_local.dart';
+import 'package:rallet/shared/infra/data_sources/database_local/database_local.dart';
+import 'package:rallet/shared/infra/data_sources/database_local/i_database_local.dart';
+import 'package:rallet/shared/infra/drivers/ad/ad_driver.dart';
+import 'package:rallet/shared/infra/drivers/ad/i_ad_driver.dart';
+import 'package:rallet/shared/infra/drivers/auth/auth_driver.dart';
+import 'package:rallet/shared/infra/drivers/auth/desktop_auth_driver.dart';
+import 'package:rallet/shared/infra/drivers/auth/i_auth_driver.dart';
+import 'package:rallet/shared/infra/drivers/crypt/crypt_aes.dart';
+import 'package:rallet/shared/infra/drivers/crypt/i_crypt_aes.dart';
+import 'package:rallet/shared/infra/drivers/file_picker/file_picker_driver.dart';
+import 'package:rallet/shared/infra/drivers/file_picker/i_file_picker_driver.dart';
+import 'package:rallet/shared/infra/drivers/share/i_share_driver.dart';
+import 'package:rallet/shared/infra/drivers/share/share_driver.dart';
+import 'package:rallet/shared/infra/repositories/delete_app_data_repository.dart';
+import 'package:rallet/shared/infra/repositories/local_db_transaction_repository.dart';
+import 'package:rallet/shared/presentation/notifiers/event_notifier.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:get_it/get_it.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rallet/firebase_options.dart';
+
+final class DependencyInjection {
+  static DependencyInjection? _instance;
+
+  DependencyInjection._();
+
+  factory DependencyInjection() => _instance ??= DependencyInjection._();
+
+  Future<void> setup() async {
+    final GetIt getIt = GetIt.I;
+
+    //Data Sources
+    late final DatabaseLocal databaseLocal;
+    late final SharedPreferences sharedPreferences;
+    if (!Platform.isLinux) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+
+    await Future.wait([
+      Future(() async => databaseLocal = await DatabaseLocal.getInstance()),
+      Future(() async => sharedPreferences = await SharedPreferences.getInstance()),
+    ]);
+
+    getIt.registerSingleton<EventNotifier>(EventNotifier());
+
+    //Drivers
+    getIt.registerFactory<IFilePickerDriver>(() => FilePickerDriver());
+    getIt.registerFactory<IShareDriver>(() => ShareDriver());
+    getIt.registerFactory<ICryptAES>(() => CryptAES());
+
+    if (Platform.isLinux) {
+      getIt.registerFactory<IAuthDriver>(() => DesktopAuthDriver());
+    } else {
+      getIt.registerSingleton<FirebaseFirestore>(FirebaseFirestore.instance);
+      getIt.registerSingleton<FirebaseAuth>(FirebaseAuth.instance);
+      getIt.registerSingleton<GoogleSignIn>(GoogleSignIn());
+      getIt.registerFactory<IAuthDriver>(
+        () => AuthDriver(
+          firebaseAuth: getIt.get<FirebaseAuth>(),
+          googleSignIn: getIt.get<GoogleSignIn>(),
+          cryptAES: getIt.get<ICryptAES>(),
+        ),
+      );
+    }
+
+    getIt.registerSingleton<IDatabaseLocal>(databaseLocal);
+    getIt.registerSingleton<SharedPreferences>(sharedPreferences);
+    getIt.registerSingleton<IAdDriver>(AdDriver());
+    getIt.registerFactory<ICacheLocal>(() => CacheLocal(sharedPreferences: sharedPreferences));
+
+    getIt.registerFactory<IAccountLocalDataSource>(() => AccountLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<ICardCashAdvanceLocalDataSource>(() => CardCashAdvanceLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<IPurchasePlanningLocalDataSource>(() => PurchasePlanningLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<IAuthLocalDataSource>(() => AuthLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<ICategoryLocalDataSource>(() => CategoryLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<ICreditCardTransactionLocalDataSource>(() => CreditCardTransactionLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<ICreditCardBillLocalDataSource>(() => CreditCardBillLocalDataSource(databaseLocal: databaseLocal, creditCardTransactionLocalDataSource: getIt.get<ICreditCardTransactionLocalDataSource>()));
+    getIt.registerFactory<ICreditCardLocalDataSource>(() => CreditCardLocalDataSource(databaseLocal: databaseLocal, creditCardBillLocalDataSource: getIt.get<ICreditCardBillLocalDataSource>()));
+    getIt.registerFactory<IExpenseLocalDataSource>(() => ExpenseLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<IFirstStepsLocalDataSource>(() => FirstStepsLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<IIncomeLocalDataSource>(() => IncomeLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<ITransferLocalDataSource>(() => TransferLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<IUserAccountLocalDataSource>(() => UserAccountLocalDataSource(databaseLocal: databaseLocal));
+    if (!Platform.isLinux) {
+      getIt.registerFactory<IUserAccountCloudDataSource>(
+        () => UserAccountCloudDataSource(
+          firestore: getIt.get<FirebaseFirestore>(),
+        ),
+      );
+    }
+    getIt.registerFactory<IStatementLocalDataSource>(() => StatementLocalDataSource(databaseLocal: databaseLocal));
+    getIt.registerFactory<ITransactionLocalDataSource>(() => TransactionLocalDataSource(databaseLocal: databaseLocal));
+
+    //Repositories
+    getIt.registerFactory<IAccountRepository>(() => AccountRepository(dataSource: getIt.get<IAccountLocalDataSource>(), creditCardLocalDataSource: getIt.get<ICreditCardLocalDataSource>(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<IAdRepository>(() => AdRepository(driver: getIt.get<IAdDriver>()));
+    getIt.registerFactory<IAdAccessRepository>(() => AdAccessRepository(cacheLocal: getIt.get<ICacheLocal>()));
+    if (Platform.isLinux) {
+      getIt.registerFactory<IAuthRepository>(() => DesktopAuthRepository());
+    } else {
+      getIt.registerFactory<IAuthRepository>(
+        () => AuthRepository(
+          authDataSource: getIt.get<IAuthLocalDataSource>(),
+          userAccountLocalDataSource: getIt.get<IUserAccountLocalDataSource>(),
+          userAccountCloudDataSource: getIt.get<IUserAccountCloudDataSource>(),
+          authDriver: getIt.get<IAuthDriver>(),
+          databaseLocal: databaseLocal,
+          databaseLocalTransaction: databaseLocal.transactionInstance(),
+          cryptAES: getIt.get<ICryptAES>(),
+        ),
+      );
+    }
+    getIt.registerFactory<IBackupRepository>(() => BackupRepository(databaseLocal: databaseLocal, cacheLocal: getIt.get<ICacheLocal>(), shareDriver: getIt.get<IShareDriver>(), filePickerDriver: getIt.get<IFilePickerDriver>()));
+    getIt.registerFactory<ICardCashAdvanceRepository>(() => CardCashAdvanceRepository(dataSource: getIt.get<ICardCashAdvanceLocalDataSource>()));
+    getIt.registerFactory<IPurchasePlanningRepository>(() => PurchasePlanningRepository(dataSource: getIt.get<IPurchasePlanningLocalDataSource>()));
+    getIt.registerFactory<ICategoryRepository>(() => CategoryRepository(dataSource: getIt.get<ICategoryLocalDataSource>()));
+    getIt.registerFactory<IConfigRepository>(() => ConfigRepository(cacheLocal: getIt.get<ICacheLocal>()));
+    getIt.registerFactory<ICreditCardRepository>(() => CreditCardRepository(creditCardDataSource: getIt.get<ICreditCardLocalDataSource>(), accountDataSource: getIt.get<IAccountLocalDataSource>(), billDataSource: getIt.get<ICreditCardBillLocalDataSource>(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<ICreditCardBillRepository>(() => CreditCardBillRepository(localDataSource: getIt.get<ICreditCardBillLocalDataSource>(), creditCardTransactionLocalDataSource: getIt.get<ICreditCardTransactionLocalDataSource>(), dbTransaction: databaseLocal.transactionInstance(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<ICreditCardTransactionRepository>(() => CreditCardTransactionRepository(dataSource: getIt.get<ICreditCardTransactionLocalDataSource>(), dbTransaction: databaseLocal.transactionInstance(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<IDeleteAppDataRepository>(() => DeleteAppDataRepository(databaseLocal: databaseLocal, cacheLocal: getIt.get<ICacheLocal>(), authDriver: getIt.get<IAuthDriver>()));
+    getIt.registerFactory<IExpenseRepository>(() => ExpenseRepository(expenseLocalDataSource: getIt.get<IExpenseLocalDataSource>(), dbTransaction: databaseLocal.transactionInstance(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<IFirstStepsRepository>(() => FirstStepsRepository(dataSource: getIt.get<IFirstStepsLocalDataSource>()));
+    getIt.registerFactory<IHomeMonthlyBalanceRepository>(() => HomeMonthlyBalanceRepository(dataSource: getIt.get<IStatementLocalDataSource>()));
+    getIt.registerFactory<IIncomeRepository>(() => IncomeRepository(incomeLocalDataSource: getIt.get<IIncomeLocalDataSource>(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<ILocalDBTransactionRepository>(() => LocalDBTransactionRepository(databaseLocalTransaction: databaseLocal.transactionInstance()));
+    getIt.registerFactory<IReportCategoriesRepository>(() => ReportCategoriesRepository(expenseLocalDataSource: getIt.get<IExpenseLocalDataSource>(), incomeLocalDataSource: getIt.get<IIncomeLocalDataSource>(), creditCardBillLocalDataSource: getIt.get<ICreditCardBillLocalDataSource>(), cardCashAdvanceLocalDataSource: getIt.get<ICardCashAdvanceLocalDataSource>(), purchasePlanningLocalDataSource: getIt.get<IPurchasePlanningLocalDataSource>(), categoriesLocalDataSource: getIt.get<ICategoryLocalDataSource>()));
+    getIt.registerFactory<ITransferRepository>(() => TransferRepository(transferLocalDataSource: getIt.get<ITransferLocalDataSource>(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<IStatementRepository>(() => StatementRepository(dataSource: getIt.get<IStatementLocalDataSource>(), dbTransaction: databaseLocal.transactionInstance()));
+    getIt.registerFactory<ITransactionRepository>(() => TransactionRepository(dataSource: getIt.get<ITransactionLocalDataSource>()));
+
+    //Use cases
+    getIt.registerFactory<IAccountDelete>(() => AccountDelete(repository: getIt.get<IAccountRepository>(), creditCardFind: getIt.get<ICreditCardFind>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IAccountFind>(() => AccountFind(repository: getIt.get<IAccountRepository>()));
+    getIt.registerFactory<IAccountReadjustmentTransaction>(() => AccountReadjustmentTransaction(incomeSave: getIt.get<IIncomeSave>(), expenseSave: getIt.get<IExpenseSave>(), repository: getIt.get<IAccountRepository>()));
+    getIt.registerFactory<IAccountSave>(() => AccountSave(repository: getIt.get<IAccountRepository>(), statementRepository: getIt.get<IStatementRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IAd>(() => Ad(repository: getIt.get<IAdRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IAdAccess>(() => AdAccess(repository: getIt.get<IAdAccessRepository>()));
+    getIt.registerFactory<IAuthFind>(() => AuthFind(repository: getIt.get<IAuthRepository>()));
+    getIt.registerFactory<IBackup>(() => Backup(repository: getIt.get<IBackupRepository>()));
+    getIt.registerFactory<ICategoryDelete>(() => CategoryDelete(repository: getIt.get<ICategoryRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<ICategoryFind>(() => CategoryFind(repository: getIt.get<ICategoryRepository>()));
+    getIt.registerFactory<ICategorySave>(() => CategorySave(repository: getIt.get<ICategoryRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IConfigFind>(() => ConfigFind(repository: getIt.get<IConfigRepository>()));
+    getIt.registerFactory<IConfigSave>(() => ConfigSave(repository: getIt.get<IConfigRepository>()));
+    getIt.registerFactory<ICreditCardDelete>(() => CreditCardDelete(repository: getIt.get<ICreditCardRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<ICreditCardFind>(() => CreditCardFind(repository: getIt.get<ICreditCardRepository>()));
+    getIt.registerFactory<ICreditCardSave>(() => CreditCardSave(creditCardBillDates: getIt.get<ICreditCardBillDates>(), repository: getIt.get<ICreditCardRepository>(), creditCardBillRepository: getIt.get<ICreditCardBillRepository>(), creditCardTransactionRepository: getIt.get<ICreditCardTransactionRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<ICreditCardBillFind>(() => CreditCardBillFind(repository: getIt.get<ICreditCardBillRepository>()));
+    getIt.registerFactory<ICreditCardBillSave>(() => CreditCardBillSave(repository: getIt.get<ICreditCardBillRepository>(), creditCardTransactionRepository: getIt.get<ICreditCardTransactionRepository>(), creditCardRepository: getIt.get<ICreditCardRepository>(), expenseRepository: getIt.get<IExpenseRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), statementRepository: getIt.get<IStatementRepository>()));
+    getIt.registerFactory<ICreditCardTransactionDelete>(() => CreditCardTransactionDelete(repository: getIt.get<ICreditCardTransactionRepository>(), expenseRepository: getIt.get<IExpenseRepository>(), statementRepository: getIt.get<IStatementRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<ICreditCardTransactionSave>(() => CreditCardTransactionSave(creditCardBillDates: getIt.get<ICreditCardBillDates>(), repository: getIt.get<ICreditCardRepository>(), creditCardBillRepository: getIt.get<ICreditCardBillRepository>(), creditCardTransactionRepository: getIt.get<ICreditCardTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IDeleteAppData>(() => DeleteAppData(repository: getIt.get<IDeleteAppDataRepository>()));
+    if (!Platform.isLinux) {
+      getIt.registerFactory<AccountDeletionService>(
+        () => AccountDeletionService(
+          firebaseAuth: getIt.get<FirebaseAuth>(),
+          googleSignIn: getIt.get<GoogleSignIn>(),
+          userAccountCloudDataSource: getIt.get<IUserAccountCloudDataSource>(),
+          deleteAppData: getIt.get<IDeleteAppData>(),
+        ),
+      );
+    }
+    getIt.registerFactory<IExpenseDelete>(() => ExpenseDelete(repository: getIt.get<IExpenseRepository>(), statementRepository: getIt.get<IStatementRepository>(), creditCardTransactionRepository: getIt.get<ICreditCardTransactionRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IExpenseSave>(() => ExpenseSave(repository: getIt.get<IExpenseRepository>(), statementRepository: getIt.get<IStatementRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IExpenseFind>(() => ExpenseFind(repository: getIt.get<IExpenseRepository>()));
+    getIt.registerFactory<IFirstStepsFind>(() => FirstStepsFind(repository: getIt.get<IFirstStepsRepository>()));
+    getIt.registerFactory<IFirstStepsSave>(() => FirstStepsSave(repository: getIt.get<IFirstStepsRepository>()));
+    getIt.registerFactory<IHomeMonthlyBalance>(() => HomeMonthlyBalance(repository: getIt.get<IHomeMonthlyBalanceRepository>()));
+    getIt.registerFactory<IIncomeDelete>(() => IncomeDelete(repository: getIt.get<IIncomeRepository>(), statementRepository: getIt.get<IStatementRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IIncomeSave>(() => IncomeSave(repository: getIt.get<IIncomeRepository>(), statementRepository: getIt.get<IStatementRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<IIncomeFind>(() => IncomeFind(repository: getIt.get<IIncomeRepository>()));
+    getIt.registerFactory<ICreditCardBillDates>(() => CreditCardBillDates());
+    getIt.registerFactory<ICardCashAdvance>(() => CardCashAdvance(repository: getIt.get<ICardCashAdvanceRepository>(), creditCardFind: getIt.get<ICreditCardFind>(), billDates: getIt.get<ICreditCardBillDates>(), creditCardTransactionRepository: getIt.get<ICreditCardTransactionRepository>(), creditCardBillRepository: getIt.get<ICreditCardBillRepository>(), statementRepository: getIt.get<IStatementRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<IPurchasePlanning>(() => PurchasePlanning(repository: getIt.get<IPurchasePlanningRepository>(), accountFind: getIt.get<IAccountFind>(), transactionFind: getIt.get<ITransactionFind>(), creditCardFind: getIt.get<ICreditCardFind>(), billDates: getIt.get<ICreditCardBillDates>(), creditCardTransactionSave: getIt.get<ICreditCardTransactionSave>(), cashAdvance: getIt.get<ICardCashAdvance>(), configFind: getIt.get<IConfigFind>(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerFactory<ILoginAuth>(() => LoginAuth(repository: getIt.get<IAuthRepository>()));
+    getIt.registerFactory<IReportCategoriesFind>(() => ReportCategoriesFind(repository: getIt.get<IReportCategoriesRepository>()));
+    getIt.registerFactory<IResetPassword>(() => ResetPassword(repository: getIt.get<IAuthRepository>()));
+    getIt.registerFactory<IRestoreBackup>(() => RestoreBackup(repository: getIt.get<IBackupRepository>()));
+    getIt.registerFactory<ISignupAuth>(() => SignupAuth(repository: getIt.get<IAuthRepository>()));
+    getIt.registerFactory<ITransactionFind>(() => TransactionFind(expenseRepository: getIt.get<IExpenseRepository>(), incomeRepository: getIt.get<IIncomeRepository>(), transferRepository: getIt.get<ITransferRepository>(), transactionRepository: getIt.get<ITransactionRepository>()));
+    getIt.registerFactory<ITransactionDelete>(() => TransactionDelete(incomeDelete: getIt.get<IIncomeDelete>(), expenseDelete: getIt.get<IExpenseDelete>(), transferDelete: getIt.get<ITransferDelete>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>()));
+    getIt.registerFactory<ITransferDelete>(() => TransferDelete(repository: getIt.get<ITransferRepository>(), statementRepository: getIt.get<IStatementRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<ITransferSave>(() => TransferSave(repository: getIt.get<ITransferRepository>(), statementRepository: getIt.get<IStatementRepository>(), localDBTransactionRepository: getIt.get<ILocalDBTransactionRepository>(), adAccess: getIt.get<IAdAccess>()));
+    getIt.registerFactory<ICreditCardTransactionFind>(() => CreditCardTransactionFind(repository: getIt.get<ICreditCardTransactionRepository>()));
+    getIt.registerFactory<ITransferFind>(() => TransferFind(repository: getIt.get<ITransferRepository>()));
+
+    //ViewModel
+    getIt.registerFactory<AccountDetailsViewModel>(() => AccountDetailsViewModel(accountDelete: getIt.get<IAccountDelete>(), statementRepository: getIt.get<IStatementRepository>(), expenseRepository: getIt.get<IExpenseRepository>(), incomeRepository: getIt.get<IIncomeRepository>(), transferRepository: getIt.get<ITransferRepository>(), cashAdvance: getIt.get<ICardCashAdvance>()));
+    getIt.registerFactory<AccountFormViewModel>(() => AccountFormViewModel(accountSave: getIt.get<IAccountSave>(), accountDelete: getIt.get<IAccountDelete>()));
+    getIt.registerFactory<AccountsListViewModel>(() => AccountsListViewModel(accountFind: getIt.get<IAccountFind>()));
+    getIt.registerFactory<ReadjustBalanceViewModel>(() => ReadjustBalanceViewModel(accountSave: getIt.get<IAccountSave>(), accountReadjustmentTransaction: getIt.get<IAccountReadjustmentTransaction>()));
+    getIt.registerFactory<EmailVerificationViewModel>(() => EmailVerificationViewModel(signupAuth: getIt.get<ISignupAuth>()));
+    getIt.registerFactory<LoginViewModel>(() => LoginViewModel(loginAuth: getIt.get<ILoginAuth>()));
+    getIt.registerFactory<ResetPasswordViewModel>(() => ResetPasswordViewModel(resetPassword: getIt.get<IResetPassword>()));
+    getIt.registerFactory<SignupViewModel>(() => SignupViewModel(signupAuth: getIt.get<ISignupAuth>()));
+    getIt.registerFactory<BackupViewModel>(() => BackupViewModel(backup: getIt.get<IBackup>()));
+    getIt.registerFactory<RestoreBackupViewModel>(() => RestoreBackupViewModel(restoreBackup: getIt.get<IRestoreBackup>(), deleteAppData: getIt.get<IDeleteAppData>()));
+    getIt.registerFactory<CategoryFormViewModel>(() => CategoryFormViewModel(categorySave: getIt.get<ICategorySave>(), categoryDelete: getIt.get<ICategoryDelete>()));
+    getIt.registerFactory<CategoriesViewModel>(() => CategoriesViewModel(categoryFind: getIt.get<ICategoryFind>()));
+    getIt.registerFactory<CardCashAdvanceFormViewModel>(() => CardCashAdvanceFormViewModel(cashAdvance: getIt.get<ICardCashAdvance>(), accountFind: getIt.get<IAccountFind>(), creditCardFind: getIt.get<ICreditCardFind>(), billDates: getIt.get<ICreditCardBillDates>()));
+    getIt.registerFactory<CardCashAdvanceDetailsViewModel>(() => CardCashAdvanceDetailsViewModel(cashAdvance: getIt.get<ICardCashAdvance>(), accountFind: getIt.get<IAccountFind>(), creditCardFind: getIt.get<ICreditCardFind>()));
+    getIt.registerFactory<PurchasePlanningViewModel>(() => PurchasePlanningViewModel(purchasePlanning: getIt.get<IPurchasePlanning>(), creditCardFind: getIt.get<ICreditCardFind>(), categoryFind: getIt.get<ICategoryFind>(), accountFind: getIt.get<IAccountFind>()));
+    getIt.registerFactory<CreditCardBillDetailsViewModel>(() => CreditCardBillDetailsViewModel(creditCardBillFind: getIt.get<ICreditCardBillFind>(), creditCardTransactionDelete: getIt.get<ICreditCardTransactionDelete>(), categoryFind: getIt.get<ICategoryFind>()));
+    getIt.registerFactory<PayBillViewModel>(() => PayBillViewModel(creditCardBillSave:getIt.get<ICreditCardBillSave>(),accountFind:getIt.get<IAccountFind>(),),);    
+    getIt.registerFactory<CreditCardBillsViewModel>(() => CreditCardBillsViewModel(creditCardBillFind: getIt.get<ICreditCardBillFind>()));
+    getIt.registerFactory<CreditCardExpenseFormViewModel>(() => CreditCardExpenseFormViewModel(categoryFind: getIt.get<ICategoryFind>(), creditCardFind: getIt.get<ICreditCardFind>(), creditCardTransactionSave: getIt.get<ICreditCardTransactionSave>(), creditCardTransactionDelete: getIt.get<ICreditCardTransactionDelete>(), creditCardTransactionFind: getIt.get<ICreditCardTransactionFind>(), expenseFind: getIt.get<IExpenseFind>()));
+    getIt.registerFactory<CreditCardFormViewModel>(() => CreditCardFormViewModel(accountFind: getIt.get<IAccountFind>(), creditCardDelete: getIt.get<ICreditCardDelete>(), creditCardSave: getIt.get<ICreditCardSave>()));
+    getIt.registerFactory<CreditCardsDetailsViewModel>(() => CreditCardsDetailsViewModel(creditCardBillFind: getIt.get<ICreditCardBillFind>(), creditCardFind: getIt.get<ICreditCardFind>(), cashAdvance: getIt.get<ICardCashAdvance>()));
+    getIt.registerFactory<HomeViewModel>(() => HomeViewModel(accountFind: getIt.get<IAccountFind>(), cashAdvance: getIt.get<ICardCashAdvance>(), purchasePlanning: getIt.get<IPurchasePlanning>(), creditCardFind: getIt.get<ICreditCardFind>(), transactionFind: getIt.get<ITransactionFind>(), monthlyBalance: getIt.get<IHomeMonthlyBalance>(), configFind: getIt.get<IConfigFind>(), configSave: getIt.get<IConfigSave>()));
+    getIt.registerFactory<ReportCategoriesViewModel>(() => ReportCategoriesViewModel(reportCategoriesFind: getIt.get<IReportCategoriesFind>()));
+    getIt.registerFactory<ReportsDashboardViewModel>(() => ReportsDashboardViewModel(transactionFind: getIt.get<ITransactionFind>(), creditCardFind: getIt.get<ICreditCardFind>(), accountFind: getIt.get<IAccountFind>(), categoryFind: getIt.get<ICategoryFind>(), cashAdvance: getIt.get<ICardCashAdvance>(), purchasePlanning: getIt.get<IPurchasePlanning>(), configFind: getIt.get<IConfigFind>(), configSave: getIt.get<IConfigSave>()));
+    getIt.registerFactory<SplashViewModel>(() => SplashViewModel(authFind: getIt.get<IAuthFind>()));
+    getIt.registerFactory<ExpenseFormViewModel>(() => ExpenseFormViewModel(expenseSave: getIt.get<IExpenseSave>(), expenseDelete: getIt.get<IExpenseDelete>(), expenseFind: getIt.get<IExpenseFind>(), categoryFind: getIt.get<ICategoryFind>(), accountFind: getIt.get<IAccountFind>()));
+    getIt.registerFactory<IncomeFormViewModel>(() => IncomeFormViewModel(incomeSave: getIt.get<IIncomeSave>(), incomeDelete: getIt.get<IIncomeDelete>(), incomeFind: getIt.get<IIncomeFind>(), categoryFind: getIt.get<ICategoryFind>(), accountFind: getIt.get<IAccountFind>()));
+    getIt.registerFactory<TransactionsListViewModel>(() => TransactionsListViewModel(transactionFind: getIt.get<ITransactionFind>(), transactionDelete: getIt.get<ITransactionDelete>(), accountFind: getIt.get<IAccountFind>(), categoryFind: getIt.get<ICategoryFind>(), expenseSave: getIt.get<IExpenseSave>(), incomeSave: getIt.get<IIncomeSave>(), purchasePlanning: getIt.get<IPurchasePlanning>(), creditCardFind: getIt.get<ICreditCardFind>(), cashAdvance: getIt.get<ICardCashAdvance>()));
+    getIt.registerFactory<TransferFormViewModel>(() => TransferFormViewModel(transferSave: getIt.get<ITransferSave>(), transferDelete: getIt.get<ITransferDelete>(), accountFind: getIt.get<IAccountFind>()));
+    getIt.registerFactory<TransactionsUnpaidUnreceivedViewModel>(() => TransactionsUnpaidUnreceivedViewModel(transactionFind: getIt.get<ITransactionFind>(), transactionDelete: getIt.get<ITransactionDelete>(), categoryFind: getIt.get<ICategoryFind>(), accountFind: getIt.get<IAccountFind>(), creditCardFind: getIt.get<ICreditCardFind>(), cashAdvance: getIt.get<ICardCashAdvance>(), purchasePlanning: getIt.get<IPurchasePlanning>(), expenseSave: getIt.get<IExpenseSave>(), incomeSave: getIt.get<IIncomeSave>()));
+    getIt.registerFactory<TransactionsSearchViewModel>(() => TransactionsSearchViewModel(transactionFind: getIt.get<ITransactionFind>()));
+    getIt.registerFactory<ExpenseDetailsViewModel>(() => ExpenseDetailsViewModel(expenseFind: getIt.get<IExpenseFind>(), expenseSave: getIt.get<IExpenseSave>(), expenseDelete: getIt.get<IExpenseDelete>(), categoryFind: getIt.get<ICategoryFind>(), accountFind: getIt.get<IAccountFind>()));
+    getIt.registerFactory<IncomeDetailsViewModel>(() => IncomeDetailsViewModel(incomeFind: getIt.get<IIncomeFind>(), incomeSave: getIt.get<IIncomeSave>(), incomeDelete: getIt.get<IIncomeDelete>(), categoryFind: getIt.get<ICategoryFind>(), accountFind: getIt.get<IAccountFind>()));
+    getIt.registerFactory<TransferDetailsViewModel>(() => TransferDetailsViewModel(transferFind: getIt.get<ITransferFind>(), transferDelete: getIt.get<ITransferDelete>(), accountFind: getIt.get<IAccountFind>()));
+    getIt.registerFactory<CreditCardExpenseDetailsViewModel>(() => CreditCardExpenseDetailsViewModel(creditCardExpenseFind: getIt.get<ICreditCardTransactionFind>(), creditCardExpenseDelete: getIt.get<ICreditCardTransactionDelete>(), categoryFind: getIt.get<ICategoryFind>(), creditCardFind: getIt.get<ICreditCardFind>(), accountFind: getIt.get<IAccountFind>()));
+
+    //Notifiers
+    getIt.registerSingleton<FirstStepsNotifier>(FirstStepsNotifier(firstStepsFind: getIt.get<IFirstStepsFind>(), firstStepsSave: getIt.get<IFirstStepsSave>(), eventNotifier: getIt.get<EventNotifier>()));
+    getIt.registerSingleton<LocaleNotifier>(LocaleNotifier(configFind: getIt.get<IConfigFind>(), configSave: getIt.get<IConfigSave>()));
+    getIt.registerSingleton<ThemeModeNotifier>(ThemeModeNotifier(configFind: getIt.get<IConfigFind>(), configSave: getIt.get<IConfigSave>()));
+  }
+
+  Future<void> dispose() async {
+    final GetIt getIt = GetIt.I;
+
+    if (getIt.isRegistered<IDatabaseLocal>()) {
+      final IDatabaseLocal registeredDatabase = getIt.get<IDatabaseLocal>();
+      if (registeredDatabase is DatabaseLocal) {
+        await registeredDatabase.dispose();
+      }
+    }
+
+    await getIt.reset();
+    _instance = null;
+  }
+}
+
+abstract class DI {
+  static T get<T extends Object>() => GetIt.I.get<T>();
+}

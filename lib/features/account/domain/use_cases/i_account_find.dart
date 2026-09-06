@@ -1,0 +1,13 @@
+import 'package:rallet/features/account/domain/entities/account_entity.dart';
+
+abstract interface class IAccountFind {
+  Future<List<AccountEntity>> findAll({bool deleted = false});
+
+  Future<AccountEntity?> findById(String id, {bool deleted = false});
+
+  Future<double> findBalanceUntilDate(DateTime date);
+
+  Future<double> findAccountsBalanceUntilDate(DateTime date);
+
+  Future<double> findAccountsBalance();
+}
